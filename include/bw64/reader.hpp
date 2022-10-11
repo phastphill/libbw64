@@ -169,6 +169,15 @@ namespace bw64 {
       return chunk<DataChunk>(chunks_, utils::fourCC("data"));
     }
     /**
+     * @brief Get 'dbmd' chunk
+     *
+     * @returns `std::shared_ptr` to DbmdChunk if present and otherwise a
+     * nullptr.
+     */
+    std::shared_ptr<DbmdChunk> dbmdChunk() const {
+      return chunk<DbmdChunk>(chunks_, DbmdChunk::Id());
+    }
+    /**
      * @brief Get 'chna' chunk
      *
      * @returns `std::shared_ptr` to ChnaChunk if present and otherwise a

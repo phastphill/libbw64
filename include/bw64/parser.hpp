@@ -102,12 +102,28 @@ namespace bw64 {
     return formatInfoChunk;
   }
 
+  ///@brief Parse DbmdChunk from input stream
+  inline std::shared_ptr<DbmdChunk> parseDbmdChunk(std::istream& stream,
+                                                   uint32_t id, uint64_t size) {
+    if (id != DbmdChunk::Id()) {
+      std::stringstream errorString;
+      errorString << "chunkId != " << DbmdChunk::Id();
+      throw std::runtime_error(errorString.str());
+    }
+    std::string data;
+    data.resize(size);
+    // since c++11, std::string[0] returns a valid reference to a null byte for
+    // size==0
+    utils::readChunk(stream, &data[0], size);
+    return std::make_shared<DbmdChunk>(data);
+  }
+
   ///@brief Parse AxmlChunk from input stream
   inline std::shared_ptr<AxmlChunk> parseAxmlChunk(std::istream& stream,
                                                    uint32_t id, uint64_t size) {
-    if (id != utils::fourCC("axml")) {
+    if (id != AxmlChunk::Id()) {
       std::stringstream errorString;
-      errorString << "chunkId != 'axml'";
+      errorString << "chunkId != " << AxmlChunk::Id();
       throw std::runtime_error(errorString.str());
     }
     std::string data;
@@ -140,9 +156,9 @@ namespace bw64 {
   ///@brief Parse ChnaChunk from input stream
   inline std::shared_ptr<ChnaChunk> parseChnaChunk(std::istream& stream,
                                                    uint32_t id, uint64_t size) {
-    if (id != utils::fourCC("chna")) {
+    if (id != ChnaChunk::Id()) {
       std::stringstream errorString;
-      errorString << "chunkId != 'chna'";
+      errorString << "chunkId != " << ChnaChunk::Id();
       throw std::runtime_error(errorString.str());
     }
     if (size < 4) {

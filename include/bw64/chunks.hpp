@@ -246,6 +246,32 @@ namespace bw64 {
   };
 
   /**
+ * @brief Class representation of an DbmdChunk
+ */
+  class DbmdChunk : public Chunk {
+  public:
+    static uint32_t Id() { return utils::fourCC("dbmd"); }
+
+    DbmdChunk(const std::string& axml) {
+      std::copy(axml.begin(), axml.end(), std::back_inserter(data_));
+    }
+
+    uint32_t id() const override { return DbmdChunk::Id(); }
+    uint64_t size() const override { return data_.size(); }
+
+    /*
+     * @brief Write the DbmdChunk to a stream
+     */
+    void write(std::ostream& stream) const override {
+      std::copy(data_.begin(), data_.end(),
+                std::ostreambuf_iterator<char>(stream));
+    }
+
+  private:
+    std::vector<char> data_;
+  };
+
+  /**
    * @brief Class representation of an AxmlChunk
    */
   class AxmlChunk : public Chunk {
@@ -363,11 +389,13 @@ namespace bw64 {
    */
   class ChnaChunk : public Chunk {
    public:
+    static uint32_t Id() { return utils::fourCC("chna"); }
+
     ChnaChunk(){};
     ChnaChunk(std::initializer_list<AudioId> audioIds) : audioIds_(audioIds){};
     ChnaChunk(std::vector<AudioId> audioIds) : audioIds_(audioIds){};
 
-    uint32_t id() const override { return utils::fourCC("chna"); }
+    uint32_t id() const override { return ChnaChunk::Id(); }
     uint64_t size() const override {
       return sizeof(numTracks()) + sizeof(numUids()) + numUids() * 40;
     }
