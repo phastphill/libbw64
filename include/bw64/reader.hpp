@@ -139,6 +139,16 @@ namespace bw64 {
     }
 
     /**
+     * @brief Get 'unknown' chunk
+     *
+     * @returns `std::shared_ptr` to DataSize64Chunk if present and otherwise
+     * a nullptr.
+     */
+    std::shared_ptr<UnknownChunk> unknownChunk(uint32_t chunkId) const {
+      return chunk<UnknownChunk>(chunks_, chunkId);
+    }
+
+    /**
      * @brief Get 'ds64' chunk
      *
      * @returns `std::shared_ptr` to DataSize64Chunk if present and otherwise
