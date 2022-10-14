@@ -304,6 +304,12 @@ namespace bw64 {
    public:
     AudioId(uint16_t trackIndex, const std::string& uid,
             const std::string trackRef, const std::string& packRef) {
+      // Track indices are 1-indexed!
+      if (trackIndex == 0) {
+        std::stringstream errorString;
+        errorString << "trackIndex cannot be initialized to zero";
+        throw std::runtime_error("attempted to initialize audioId with trackIndex of 0 ");
+      }
       if (uid.size() > 12) {
         std::stringstream errorString;
         errorString << "uid \'" << uid << "\' is too long (" << uid.size()
