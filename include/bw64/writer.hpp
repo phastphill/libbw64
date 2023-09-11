@@ -2,6 +2,7 @@
 #pragma once
 #include <algorithm>
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -24,7 +25,7 @@ namespace bw64 {
    *
    * This is a
    * [RAII](https://en.wikipedia.org/wiki/Resource_acquisition_is_initialization)
-   * class, meaning that the file will be openend and initialized (required
+   * class, meaning that the file will be opened and initialized (required
    * headers etc.) on construction, and closed and finalized (writing chunk
    * sizes etc.) on destruction.
    */
@@ -155,6 +156,9 @@ namespace bw64 {
       return false;
     }
 
+    /// @brief Use RF64 ID for outer chunk (when >4GB) rather than BW64
+    void useRf64Id(bool state) { useRf64Id_ = state; }
+
     void setChnaChunk(std::shared_ptr<ChnaChunk> chunk) {
       if (chunk->numUids() > 1024) {
         // TODO: make pre data chunk chna chunk a JUNK chunk and add chnaChunk
@@ -203,8 +207,9 @@ namespace bw64 {
       auto last_position = fileStream_.tellp();
       fileStream_.seekp(0);
       if (isBw64File()) {
-        utils::writeValue(fileStream_, utils::fourCC("BW64"));
-        utils::writeValue(fileStream_, INT32_MAX);
+        utils::writeValue(fileStream_,
+                          utils::fourCC(useRf64Id_ ? "RF64" : "BW64"));
+        utils::writeValue(fileStream_, (std::numeric_limits<uint32_t>::max)());
         overwriteJunkWithDs64Chunk();
       } else {
         utils::writeValue(fileStream_, utils::fourCC("RIFF"));
@@ -282,13 +287,13 @@ namespace bw64 {
     /**
      * @brief Write frames to dataChunk
      *
-     * @param[out] inBuffer Buffer to write the samples to
+     * @param[out] inBuffer Buffer to read samples from
      * @param[in]  frames   Number of frames to write
      *
      * @returns number of frames written
      */
-    template <typename T,
-              typename = std::enable_if<std::is_floating_point<T>::value>>
+    template <typename T, typename std::enable_if<
+                              std::is_floating_point<T>::value, int>::type = 0>
     uint64_t write(T* inBuffer, uint64_t frames) {
       uint64_t bytesWritten = frames * formatChunk()->blockAlignment();
       rawDataBuffer_.resize(bytesWritten);
@@ -307,6 +312,7 @@ namespace bw64 {
     std::vector<std::shared_ptr<Chunk>> chunks_;
     std::vector<ChunkHeader> chunkHeaders_;
     std::vector<std::shared_ptr<Chunk>> postDataChunks_;
+    bool useRf64Id_{false};
   };
 
 }  // namespace bw64

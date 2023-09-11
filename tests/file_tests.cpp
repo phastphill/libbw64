@@ -29,7 +29,7 @@ TEST_CASE("read_rect_24bit") {
 
 TEST_CASE("read_rect_32bit") {
   auto bw64File = readFile("rect_32bit.wav");
-  REQUIRE(bw64File->formatTag() == 1u);
+  REQUIRE(bw64File->formatTag() == 0xfffeu);
   REQUIRE(bw64File->bitDepth() == 32u);
   REQUIRE(bw64File->sampleRate() == 44100u);
   REQUIRE(bw64File->channels() == 2u);
@@ -253,6 +253,40 @@ TEST_CASE("can_read_all_frames") {
   auto bw64File = readFile("noise_24bit_uneven_data_chunk_size.wav");
   REQUIRE(bw64File->numberOfFrames() == 13);
   std::vector<float> data(frames * bw64File->channels(), 0.f);
-  int readSampleCount = bw64File->read(&data[0], frames);
+  auto readSampleCount = bw64File->read(&data[0], frames);
   REQUIRE(readSampleCount == 13);
+}
+
+TEST_CASE("write_read_big", "[.big]") {
+  uint64_t frames = 0x90000000UL;
+  uint64_t blockSize = 0x1000UL;
+
+  std::string filename = "big.wav";
+  {
+    auto bw64File = writeFile(filename, 1, 48000, 16);
+
+    std::vector<float> block(blockSize);
+    for (size_t i = 0; i < block.size(); i++)
+      block[i] = (i % 2 == 0) ? 0.5f : 0.0f;
+
+    for (uint64_t frame = 0; frame < frames; frame += block.size())
+      bw64File->write(&block[0], block.size());
+  }
+
+  {
+    auto bw64File = readFile(filename);
+    REQUIRE(bw64File->numberOfFrames() == frames);
+
+    std::vector<float> block(blockSize);
+    for (uint64_t frame = 0; frame < frames; frame += block.size()) {
+      auto readFrames = bw64File->read(&block[0], blockSize);
+      REQUIRE(readFrames == blockSize);
+      for (size_t i = 0; i < blockSize; i++) {
+        if (i % 2 == 0)
+          REQUIRE(block[i] == Approx(0.5f).epsilon(1e-2));
+        else
+          REQUIRE(block[i] == Approx(0.0f).epsilon(1e-2));
+      }
+    }
+  }
 }

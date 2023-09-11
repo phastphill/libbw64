@@ -89,9 +89,9 @@ TEST_CASE("encode_pcm_samples_16bit") {
   const char* encodedSamples =
       "\x00\x00"
       "\xff\x7f"
-      "\x01\x80"
-      "\xff\x3f"
-      "\x01\xc0";
+      "\x00\x80"
+      "\x00\x40"
+      "\x00\xc0";
   char encoded16bit[10];
 
   const float samples[] = {0.f, 1.f, -1.f, 0.5f, -0.5f};
@@ -106,9 +106,9 @@ TEST_CASE("encode_pcm_samples_24bit") {
   const char* encodedSamples =
       "\x00\x00\x00"
       "\xff\xff\x7f"
-      "\x01\x00\x80"
-      "\xff\xff\x3f"
-      "\x01\x00\xc0";
+      "\x00\x00\x80"
+      "\x00\x00\x40"
+      "\x00\x00\xc0";
   char encoded24bit[15];
 
   const float samples[] = {0.f, 1.f, -1.f, 0.5f, -0.5f};
@@ -123,9 +123,9 @@ TEST_CASE("encode_pcm_samples_32bit") {
   const char* encodedSamples =
       "\x00\x00\x00\x00"
       "\xff\xff\xff\x7f"
-      "\x01\x00\x00\x80"
-      "\xff\xff\xff\x3f"
-      "\x01\x00\x00\xc0";
+      "\x00\x00\x00\x80"
+      "\x00\x00\x00\x40"
+      "\x00\x00\x00\xc0";
   char encoded32bit[20];
 
   const float samples[] = {0.f, 1.f, -1.f, 0.5f, -0.5f};
@@ -173,6 +173,58 @@ TEST_CASE("encode_decode_pcm_samples_32bit") {
   REQUIRE(samples[2] == Approx(decodedSamples[2]).epsilon(1e-6));
   REQUIRE(samples[3] == Approx(decodedSamples[3]).epsilon(1e-6));
   REQUIRE(samples[4] == Approx(decodedSamples[4]).epsilon(1e-6));
+}
+
+/// check that a given PCM sample value when decoded then encoded results in
+/// the same value
+template <int bytes, typename T>
+void checkDecodeEncodeOne(uint64_t value) {
+  constexpr int bits = 8 * bytes;
+
+  char sample[bytes];
+  for (size_t c = 0; c < bytes; c++) sample[c] = (value >> (c * 8)) & 0xff;
+
+  T decoded;
+  utils::decodePcmSamples(sample, &decoded, 1, bits);
+  char encoded[bytes];
+  utils::encodePcmSamples(&decoded, encoded, 1, bits);
+
+  uint64_t encoded_value = 0;
+  for (size_t c = 0; c < bytes; c++)
+    encoded_value |= static_cast<uint64_t>(encoded[c] & 0xff) << (c * 8);
+  CHECK(value == encoded_value);
+}
+
+// check all pcm values with checkDecodeEncodeOne
+template <int bytes, typename T>
+void checkDecodeEncodeAll() {
+  constexpr int bits = 8 * bytes;
+
+  for (uint64_t value = 0; value < (1 << bits); value++)
+    checkDecodeEncodeOne<bytes, T>(value);
+}
+
+// check pcm values around 0, -1 and +1 with checkDecodeEncodeOne
+template <int bytes, typename T>
+void checkDecodeEncodeAroundEdges(uint64_t n) {
+  constexpr int bits = 8 * bytes;
+
+  for (uint64_t value = 0; value < n; value++) {
+    // up from zero
+    checkDecodeEncodeOne<bytes, T>(value);
+    // down from -1
+    checkDecodeEncodeOne<bytes, T>((((uint64_t)1 << bits) - 1) - value);
+    // up from -MAX
+    checkDecodeEncodeOne<bytes, T>(((uint64_t)1 << (bits - 1)) + value);
+    // down from +MAX
+    checkDecodeEncodeOne<bytes, T>((((uint64_t)1 << (bits - 1)) - 1) - value);
+  }
+}
+
+TEST_CASE("decode_encode_passthrough") {
+  SECTION("16 bit float") { checkDecodeEncodeAll<2, float>(); };
+  SECTION("24 bit float") { checkDecodeEncodeAroundEdges<3, float>(1000); }
+  SECTION("32 bit double") { checkDecodeEncodeAroundEdges<4, double>(1000); }
 }
 
 TEST_CASE("write_chunk_with_padding") {
